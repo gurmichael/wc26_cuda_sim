@@ -134,47 +134,25 @@
             <input type="text" id="calculatedGbWinner" readonly value="">
         </div>
 
-        <div class="control-group">
-            <h2>Player Additional Stats</h2>
-            <p style="font-size: 13px; color: #52525b; margin-top: 0; margin-bottom: 15px;">Input <strong>additional</strong> goals (3 pts each) and assists for the remaining matches.</p>
-            
-            <label>Kylian Mbappe (Base: 8G, 3A)</label>
-            <div class="grid-2">
-                <div>
-                    <label>Goals</label>
-                    <input type="number" id="goals_Mbappe" min="0" value="0" oninput="simulate()">
-                </div>
-                <div>
-                    <label>Assists</label>
-                    <input type="number" id="assists_Mbappe" min="0" value="0" oninput="simulate()">
-                </div>
-            </div>
-            
-            <label>Harry Kane (Base: 6G, 1A)</label>
-            <div class="grid-2">
-                <div>
-                    <label>Goals</label>
-                    <input type="number" id="goals_Harry_Kane" min="0" value="0" oninput="simulate()">
-                </div>
-                <div>
-                    <label>Assists</label>
-                    <input type="number" id="assists_Harry_Kane" min="0" value="0" oninput="simulate()">
-                </div>
-            </div>
-            
-            <label>Mikel Oyarzabal (Base: 5G, 1A)</label>
-            <div class="grid-2">
-                <div>
-                    <label>Goals</label>
-                    <input type="number" id="goals_Mikel_Oyarzabal" min="0" value="0" oninput="simulate()">
-                </div>
-                <div>
-                    <label>Assists</label>
-                    <input type="number" id="assists_Mikel_Oyarzabal" min="0" value="0" oninput="simulate()">
-                </div>
-            </div>
-        </div>
     </div>
+
+    <h2>Golden Boot Race</h2>
+    <p style="font-size: 13px; color: #52525b; margin-top: -10px; margin-bottom: 15px;">Enter <strong>additional</strong> goals (+3 pts each) and assists scored in remaining matches.</p>
+    <table id="gbTable">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Goals</th>
+                <th>+ Goals</th>
+                <th>Assists</th>
+                <th>+ Assists</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
 
     <h2>Live Dynamic Leaderboard</h2>
     <table id="matchTable">
@@ -217,6 +195,25 @@
         { name: "דניאל חיון", base: 175, winner: "France", gb: "Mbappe" }
     ];
 
+    // GB candidates base stats
+    const gbBase = [
+        { name: "Mbappe",          baseG: 8, baseA: 3, min: 666 },
+        { name: "Messi",           baseG: 8, baseA: 2, min: 608 },
+        { name: "Jude Bellingham", baseG: 6, baseA: 1, min: 574 },
+        { name: "Harry Kane",      baseG: 6, baseA: 1, min: 627 },
+        { name: "Ousmane Dembele", baseG: 5, baseA: 2, min: 595 },
+        { name: "Mikel Oyarzabal", baseG: 5, baseA: 1, min: 599 }
+    ];
+
+    // Persistent extra goals/assists state
+    const gbExtra = {};
+    gbBase.forEach(c => { gbExtra[c.name] = { g: 0, a: 0 }; });
+
+    function updateGbExtra(name, field, value) {
+        gbExtra[name][field] = parseInt(value) || 0;
+        simulate();
+    }
+
     // Maintain state including active selections
     let playerState = playersData.map(p => ({ ...p, matchPts: 0, total: p.base, gained: 0 }));
 
@@ -237,36 +234,33 @@
         }
     }
 
+    const UNPREDICTED_PLAYERS = ["Messi", "Jude Bellingham", "Ousmane Dembele"];
+
     function calculateGB() {
-        let mbappeG = 8 + (parseInt(document.getElementById('goals_Mbappe').value) || 0);
-        let mbappeA = 3 + (parseInt(document.getElementById('assists_Mbappe').value) || 0);
-
-        let kaneG = 6 + (parseInt(document.getElementById('goals_Harry_Kane').value) || 0);
-        let kaneA = 1 + (parseInt(document.getElementById('assists_Harry_Kane').value) || 0);
-
-        let oyarzabalG = 5 + (parseInt(document.getElementById('goals_Mikel_Oyarzabal').value) || 0);
-        let oyarzabalA = 1 + (parseInt(document.getElementById('assists_Mikel_Oyarzabal').value) || 0);
-
-        let candidates = [
-            { name: "Mbappe", g: mbappeG, a: mbappeA, min: 564 },
-            { name: "Harry Kane", g: kaneG, a: kaneA, min: 489 },
-            { name: "Mikel Oyarzabal", g: oyarzabalG, a: oyarzabalA, min: 544 }
-        ];
+        let candidates = gbBase.map(c => ({
+            name: c.name,
+            g: c.baseG + gbExtra[c.name].g,
+            a: c.baseA + gbExtra[c.name].a,
+            min: c.min
+        }));
 
         candidates.sort((p1, p2) => {
             if (p2.g !== p1.g) return p2.g - p1.g;
             if (p2.a !== p1.a) return p2.a - p1.a;
-            return p1.min - p2.min; 
+            return p1.min - p2.min;
         });
 
-        let winnerName = candidates[0].name;
-        document.getElementById('calculatedGbWinner').value = `${winnerName} (${candidates[0].g}G, ${candidates[0].a}A)`;
-        return winnerName;
+        let winner = candidates[0];
+        let displayLabel = UNPREDICTED_PLAYERS.includes(winner.name)
+            ? `${winner.name} (${winner.g}G, ${winner.a}A) ⚠️ No one scores GB pts!`
+            : `${winner.name} (${winner.g}G, ${winner.a}A)`;
+        document.getElementById('calculatedGbWinner').value = displayLabel;
+        return { winner: winner.name, candidates };
     }
 
     function simulate() {
         const actualWinner = document.getElementById('tournamentWinner').value;
-        const actualGbWinner = calculateGB();
+        const { winner: actualGbWinner, candidates: gbCandidates } = calculateGB();
 
         // Calculate points
         playerState.forEach(p => {
@@ -278,24 +272,45 @@
                 p.gained += 30;
             }
 
-            if (p.gb === actualGbWinner) {
+            if (p.gb === actualGbWinner && !UNPREDICTED_PLAYERS.includes(actualGbWinner)) {
                 p.total += 20;
                 p.gained += 20;
             }
 
-            if (["Mbappe", "Harry Kane", "Mikel Oyarzabal"].includes(p.gb)) {
-                const safeGbId = p.gb.replace(/\s+/g, '_');
-                const goalInput = document.getElementById('goals_' + safeGbId);
-                if (goalInput) {
-                    const addedGoals = parseInt(goalInput.value) || 0;
-                    p.total += (addedGoals * 3);
-                    p.gained += (addedGoals * 3);
-                }
+            if (gbExtra[p.gb] !== undefined) {
+                p.total += gbExtra[p.gb].g * 3;
+                p.gained += gbExtra[p.gb].g * 3;
             }
 
             p.total += p.matchPts;
             p.gained += p.matchPts;
         });
+
+        // Render GB table
+        const gbTbody = document.querySelector('#gbTable tbody');
+        let gbHtml = '';
+        gbCandidates.forEach((c, i) => {
+            const isWinner = i === 0;
+            const isUnpredicted = UNPREDICTED_PLAYERS.includes(c.name);
+            const rowClass = isWinner ? 'rank-1' : '';
+            const statusHtml = isWinner
+                ? (isUnpredicted
+                    ? `<span class="badge" style="background:#fee2e2;color:#dc2626;border-color:#fca5a5;">⚠️ No GB pts awarded</span>`
+                    : `<span class="badge badge-correct">🥇 Leading</span>`)
+                : (isUnpredicted ? `<span class="badge" style="color:#dc2626;">Unpredicted</span>` : `<span class="badge">In race</span>`);
+            const safeName = c.name.replace(/'/g, "\\'");
+            gbHtml += `
+                <tr class="${rowClass}">
+                    <td><strong>${i + 1}</strong></td>
+                    <td><strong>${c.name}</strong></td>
+                    <td><strong>${c.g}</strong></td>
+                    <td><input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].g}" oninput="updateGbExtra('${safeName}','g',this.value)"></td>
+                    <td><strong>${c.a}</strong></td>
+                    <td><input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].a}" oninput="updateGbExtra('${safeName}','a',this.value)"></td>
+                    <td>${statusHtml}</td>
+                </tr>`;
+        });
+        gbTbody.innerHTML = gbHtml;
 
         // Sort by total points descending
         playerState.sort((a, b) => b.total - a.total);
