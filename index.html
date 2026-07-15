@@ -145,8 +145,6 @@
                 <th>Player</th>
                 <th>Goals</th>
                 <th>+ Goals</th>
-                <th>Assists</th>
-                <th>+ Assists</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -244,23 +242,24 @@
             min: c.min
         }));
 
-        candidates.sort((p1, p2) => {
-            if (p2.g !== p1.g) return p2.g - p1.g;
-            if (p2.a !== p1.a) return p2.a - p1.a;
-            return p1.min - p2.min;
-        });
+        candidates.sort((p1, p2) => p2.g - p1.g);
 
-        let winner = candidates[0];
-        let displayLabel = UNPREDICTED_PLAYERS.includes(winner.name)
-            ? `${winner.name} (${winner.g}G, ${winner.a}A) ⚠️ No one scores GB pts!`
-            : `${winner.name} (${winner.g}G, ${winner.a}A)`;
-        document.getElementById('calculatedGbWinner').value = displayLabel;
-        return { winner: winner.name, candidates };
+        const maxGoals = candidates[0].g;
+        const winners = candidates.filter(c => c.g === maxGoals);
+        const winnerNames = winners.map(w => w.name);
+
+        const allUnpredicted = winnerNames.every(n => UNPREDICTED_PLAYERS.includes(n));
+        const someUnpredicted = winnerNames.some(n => UNPREDICTED_PLAYERS.includes(n));
+        const label = winnerNames.join(' / ') + ` (${maxGoals}G)` +
+            (allUnpredicted ? ' ⚠️ No one scores GB pts!' :
+             someUnpredicted ? ' ⚠️ Partial unpredicted tie' : '');
+        document.getElementById('calculatedGbWinner').value = label;
+        return { winners: winnerNames, candidates };
     }
 
     function simulate() {
         const actualWinner = document.getElementById('tournamentWinner').value;
-        const { winner: actualGbWinner, candidates: gbCandidates } = calculateGB();
+        const { winners: gbWinners, candidates: gbCandidates } = calculateGB();
 
         // Calculate points
         playerState.forEach(p => {
@@ -272,7 +271,7 @@
                 p.gained += 30;
             }
 
-            if (p.gb === actualGbWinner && !UNPREDICTED_PLAYERS.includes(actualGbWinner)) {
+            if (gbWinners.includes(p.gb) && !UNPREDICTED_PLAYERS.includes(p.gb)) {
                 p.total += 20;
                 p.gained += 20;
             }
@@ -290,7 +289,7 @@
         const gbTbody = document.querySelector('#gbTable tbody');
         let gbHtml = '';
         gbCandidates.forEach((c, i) => {
-            const isWinner = i === 0;
+            const isWinner = gbWinners.includes(c.name);
             const isUnpredicted = UNPREDICTED_PLAYERS.includes(c.name);
             const rowClass = isWinner ? 'rank-1' : '';
             const statusHtml = isWinner
@@ -305,8 +304,6 @@
                     <td><strong>${c.name}</strong></td>
                     <td><strong>${c.g}</strong></td>
                     <td><input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].g}" oninput="updateGbExtra('${safeName}','g',this.value)"></td>
-                    <td><strong>${c.a}</strong></td>
-                    <td><input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].a}" oninput="updateGbExtra('${safeName}','a',this.value)"></td>
                     <td>${statusHtml}</td>
                 </tr>`;
         });
@@ -331,8 +328,8 @@
                 ? `<span class="badge badge-correct">${p.winner}</span>` 
                 : `<span class="badge">${p.winner}</span>`;
                 
-            const gbBadge = p.gb === actualGbWinner 
-                ? `<span class="badge badge-correct">${p.gb}</span>` 
+            const gbBadge = gbWinners.includes(p.gb)
+                ? `<span class="badge badge-correct">${p.gb}</span>`
                 : `<span class="badge">${p.gb}</span>`;
 
             // Dropdown Options
