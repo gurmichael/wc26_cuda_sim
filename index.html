@@ -122,12 +122,11 @@
     <div class="controls">
         <div class="control-group">
             <h2>Futures Settings</h2>
-            <label>Tournament Winner (30 pts)</label>
+            <label>Tournament Winner (30 pts) — Final: Argentina vs Spain</label>
             <select id="tournamentWinner" onchange="simulate()">
                 <option value="None">None / Undecided</option>
-                <option value="Spain">Spain</option>
-                <option value="England">England</option>
                 <option value="Argentina">Argentina</option>
+                <option value="Spain">Spain</option>
             </select>
 
             <label>Calculated Golden Boot Winner (20 pts)</label>
@@ -137,14 +136,15 @@
     </div>
 
     <h2>Golden Boot Race</h2>
-    <p style="font-size: 13px; color: #52525b; margin-top: -10px; margin-bottom: 15px;">Enter <strong>additional</strong> goals (+3 pts each) and assists scored in remaining matches.</p>
+    <p style="font-size: 13px; color: #52525b; margin-top: -10px; margin-bottom: 15px;">Only Argentina &amp; Spain players can still score. Enter <strong>final</strong> goals (+3 pts each) below. GB is decided by <strong>goals only</strong>; ties share the Golden Boot.</p>
     <table id="gbTable">
         <thead>
             <tr>
                 <th>Rank</th>
                 <th>Player</th>
-                <th>Goals</th>
-                <th>+ Goals</th>
+                <th>Goals So Far</th>
+                <th>+ Final Goals</th>
+                <th>Total</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -160,8 +160,8 @@
                 <th>Player</th>
                 <th>Predicted Winner</th>
                 <th>Predicted Golden Boot</th>
-                <th>Base Pts</th>
-                <th>Match Points (3 Games)</th>
+                <th>Current Pts</th>
+                <th>Final Game Points</th>
                 <th>Pts Gained</th>
                 <th>Total Pts</th>
             </tr>
@@ -175,37 +175,35 @@
 <script>
     // Initial Player Data
     const playersData = [
-        { name: "Maor.T", base: 260, winner: "France", gb: "Mbappe" },
-        { name: "Edward", base: 246.5, winner: "Spain", gb: "Mbappe" },
-        { name: "Eran Ben Elisha", base: 240, winner: "France", gb: "Mbappe" },
-        { name: "Yonathan.L", base: 234, winner: "Spain", gb: "Mbappe" },
-        { name: "Tariq", base: 232.5, winner: "Brazil", gb: "Harry Kane" },
-        { name: "Maor Gottlieb", base: 229, winner: "France", gb: "Erling Haaland" }, 
-        { name: "Dror", base: 227, winner: "Portugal", gb: "Harry Kane" },
-        { name: "גל פרסמן", base: 214, winner: "Spain", gb: "Mbappe" },
+        { name: "Maor.T", base: 266, winner: "France", gb: "Mbappe" },
+        { name: "Edward", base: 252.5, winner: "Spain", gb: "Mbappe" },
+        { name: "Yonathan.L", base: 252, winner: "Spain", gb: "Mbappe" },
+        { name: "Eran Ben Elisha", base: 246, winner: "France", gb: "Mbappe" },
+        { name: "Dror", base: 233, winner: "Portugal", gb: "Harry Kane" },
+        { name: "טארק טוקאן", base: 232.5, winner: "Brazil", gb: "Harry Kane" },
+        { name: "Maor Gottlieb", base: 229, winner: "France", gb: "Erling Haaland" },
+        { name: "Arthur Hriakovsky", base: 221, winner: "Portugal", gb: "Mikel Oyarzabal" },
+        { name: "גל פרסמן", base: 220, winner: "Spain", gb: "Mbappe" },
         { name: "Michael Gur", base: 212.5, winner: "Portugal", gb: "Harry Kane" },
-        { name: "Arthur", base: 209, winner: "Portugal", gb: "Mikel Oyarzabal" },
+        { name: "Max C", base: 211, winner: "Argentina", gb: "Mbappe" },
         { name: "רן רוזנשטיין", base: 204, winner: "England", gb: "Mikel Oyarzabal" },
         { name: "Ran D", base: 201, winner: "France", gb: "Harry Kane" },
-        { name: "Max C", base: 193, winner: "Argentina", gb: "Mbappe" },
-        { name: "נמרוד", base: 188.5, winner: "Spain", gb: "Mbappe" },
-        { name: "שלמה אסף", base: 181, winner: "France", gb: "Mbappe" },
-        { name: "דניאל חיון", base: 175, winner: "France", gb: "Mbappe" }
+        { name: "נמרוד", base: 200.5, winner: "Spain", gb: "Mbappe" },
+        { name: "שלמה אסף", base: 199, winner: "France", gb: "Mbappe" },
+        { name: "דניאל חיון", base: 181, winner: "France", gb: "Mbappe" }
     ];
 
-    // GB candidates base stats
+    // GB candidates. Only Argentina & Spain players are still active (Final).
+    // Mbappe (France) is eliminated: goals locked, cannot score more.
     const gbBase = [
-        { name: "Mbappe",          baseG: 8, baseA: 3, min: 666 },
-        { name: "Messi",           baseG: 8, baseA: 2, min: 608 },
-        { name: "Jude Bellingham", baseG: 6, baseA: 1, min: 574 },
-        { name: "Harry Kane",      baseG: 6, baseA: 1, min: 627 },
-        { name: "Ousmane Dembele", baseG: 5, baseA: 2, min: 595 },
-        { name: "Mikel Oyarzabal", baseG: 5, baseA: 1, min: 599 }
+        { name: "Mbappe",          baseG: 10, team: "France",    locked: true  },
+        { name: "Messi",           baseG: 8,  team: "Argentina", locked: false },
+        { name: "Mikel Oyarzabal", baseG: 5,  team: "Spain",     locked: false }
     ];
 
-    // Persistent extra goals/assists state
+    // Persistent extra (final) goals state
     const gbExtra = {};
-    gbBase.forEach(c => { gbExtra[c.name] = { g: 0, a: 0 }; });
+    gbBase.forEach(c => { gbExtra[c.name] = { g: 0 }; });
 
     function updateGbExtra(name, field, value) {
         gbExtra[name][field] = parseInt(value) || 0;
@@ -215,14 +213,17 @@
     // Maintain state including active selections
     let playerState = playersData.map(p => ({ ...p, matchPts: 0, total: p.base, gained: 0 }));
 
-    // Calculate match points options (a*5 + x*6)
-    const matchOptions = [];
-    for (let a = 0; a <= 1; a++) {
-        for (let x = 0; x <= 5; x++) {
-            matchOptions.push(a * 5 + x * 6);
-        }
-    }
-    const uniqueOptions = [...new Set(matchOptions)].sort((c, d) => c - d);
+    // Final game scoring options (one game left)
+    const uniqueOptions = [0, 5, 6, 7, 11, 12, 13];
+    const matchOptionLabels = {
+        0:  "0 pts",
+        5:  "5 pts - Spain",
+        6:  "6 pts - Draw",
+        7:  "7 pts - Argentina",
+        11: "11 pts - Spain + Exact",
+        12: "12 pts - Draw + Exact",
+        13: "13 pts - Argentina + Exact"
+    };
 
     function updateMatchPts(playerName, value) {
         const player = playerState.find(p => p.name === playerName);
@@ -232,14 +233,15 @@
         }
     }
 
-    const UNPREDICTED_PLAYERS = ["Messi", "Jude Bellingham", "Ousmane Dembele"];
+    const UNPREDICTED_PLAYERS = ["Messi"];
 
     function calculateGB() {
         let candidates = gbBase.map(c => ({
             name: c.name,
+            baseG: c.baseG,
             g: c.baseG + gbExtra[c.name].g,
-            a: c.baseA + gbExtra[c.name].a,
-            min: c.min
+            team: c.team,
+            locked: c.locked
         }));
 
         candidates.sort((p1, p2) => p2.g - p1.g);
@@ -292,18 +294,31 @@
             const isWinner = gbWinners.includes(c.name);
             const isUnpredicted = UNPREDICTED_PLAYERS.includes(c.name);
             const rowClass = isWinner ? 'rank-1' : '';
-            const statusHtml = isWinner
-                ? (isUnpredicted
+            let statusHtml;
+            if (c.locked) {
+                statusHtml = isWinner
+                    ? `<span class="badge badge-correct">🥇 Leading (eliminated)</span>`
+                    : `<span class="badge">Eliminated — locked</span>`;
+            } else if (isWinner) {
+                statusHtml = isUnpredicted
                     ? `<span class="badge" style="background:#fee2e2;color:#dc2626;border-color:#fca5a5;">⚠️ No GB pts awarded</span>`
-                    : `<span class="badge badge-correct">🥇 Leading</span>`)
-                : (isUnpredicted ? `<span class="badge" style="color:#dc2626;">Unpredicted</span>` : `<span class="badge">In race</span>`);
+                    : `<span class="badge badge-correct">🥇 Leading</span>`;
+            } else {
+                statusHtml = isUnpredicted
+                    ? `<span class="badge" style="color:#dc2626;">Unpredicted — in race</span>`
+                    : `<span class="badge">In race</span>`;
+            }
             const safeName = c.name.replace(/'/g, "\\'");
+            const goalCell = c.locked
+                ? `<span style="color:#a1a1aa;">— (out)</span>`
+                : `<input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].g}" oninput="updateGbExtra('${safeName}','g',this.value)">`;
             gbHtml += `
                 <tr class="${rowClass}">
                     <td><strong>${i + 1}</strong></td>
-                    <td><strong>${c.name}</strong></td>
+                    <td><strong>${c.name}</strong> <span class="badge">${c.team}</span></td>
+                    <td>${c.baseG}</td>
+                    <td>${goalCell}</td>
                     <td><strong>${c.g}</strong></td>
-                    <td><input type="number" class="match-select" style="width:60px" min="0" value="${gbExtra[c.name].g}" oninput="updateGbExtra('${safeName}','g',this.value)"></td>
                     <td>${statusHtml}</td>
                 </tr>`;
         });
@@ -335,7 +350,7 @@
             // Dropdown Options
             const optionsHtml = uniqueOptions.map(val => {
                 const selected = val === p.matchPts ? 'selected' : '';
-                return `<option value="${val}" ${selected}>${val} pts</option>`;
+                return `<option value="${val}" ${selected}>${matchOptionLabels[val]}</option>`;
             }).join('');
             
             const selectHtml = `<select class="match-select" onchange="updateMatchPts('${p.name}', this.value)">${optionsHtml}</select>`;
